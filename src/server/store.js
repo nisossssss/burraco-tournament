@@ -1,20 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_FILE = path.join(__dirname, '..', '..', 'tournament.json');
+const DATA_FILE = path.join(
+  __dirname,
+  '..',
+  '..',
+  'tournament.json'
+);
 
 const defaultTournament = {
   config: {
     tournamentName: 'Torneo Burraco',
+
     teamsCount: 12,
     playersPerTeam: 2,
+
     groupCount: 2,
     teamsPerGroup: 6,
+
+    groupTargetScore: 1005,
+
     groupPhaseDay: 1,
     knockoutPhaseDay: 2,
 
+    /*
+     * Le squadre e i codici sono preconfigurati.
+     * L'appartenenza reale a G1/G2 viene sorteggiata.
+     */
     groupAssignmentMode: 'fixed',
 
+    /*
+     * Queste due liste sono solo il registro delle 12 squadre.
+     * Non rappresentano più i gironi reali del torneo.
+     */
     manualGroups: {
       G1: [],
       G2: []
@@ -36,10 +54,26 @@ const defaultTournament = {
     qualifiedPerGroup: 4,
 
     knockoutTemplate: [
-      { slot: 'QF1', home: 'G1_1', away: 'G2_4' },
-      { slot: 'QF2', home: 'G1_2', away: 'G2_3' },
-      { slot: 'QF3', home: 'G2_1', away: 'G1_4' },
-      { slot: 'QF4', home: 'G2_2', away: 'G1_3' }
+      {
+        slot: 'QF1',
+        home: 'G1_1',
+        away: 'G2_4'
+      },
+      {
+        slot: 'QF2',
+        home: 'G1_2',
+        away: 'G2_3'
+      },
+      {
+        slot: 'QF3',
+        home: 'G2_1',
+        away: 'G1_4'
+      },
+      {
+        slot: 'QF4',
+        home: 'G2_2',
+        away: 'G1_3'
+      }
     ]
   },
 
@@ -51,6 +85,7 @@ const defaultTournament = {
     connectedTeams: [],
     registeredTeams: [],
 
+    /* Gironi reali generati dal sorteggio. */
     groups: {
       G1: [],
       G2: []
@@ -63,8 +98,6 @@ const defaultTournament = {
       G2: []
     },
 
-    // Turno dei gironi attualmente attivo.
-    // null = nessun turno avviato.
     activeGroupRound: null,
 
     knockoutMatches: [],
@@ -77,28 +110,39 @@ const defaultTournament = {
 };
 
 function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
+  return JSON.parse(
+    JSON.stringify(value)
+  );
 }
 
 function normalizeMatch(match) {
-  const scoreHome = Number.isInteger(match?.scoreHome)
-    ? match.scoreHome
-    : null;
+  const scoreHome =
+    Number.isInteger(match?.scoreHome)
+      ? match.scoreHome
+      : null;
 
-  const scoreAway = Number.isInteger(match?.scoreAway)
-    ? match.scoreAway
-    : null;
+  const scoreAway =
+    Number.isInteger(match?.scoreAway)
+      ? match.scoreAway
+      : null;
 
   const played =
     Boolean(match?.played) ||
-    (scoreHome !== null && scoreAway !== null);
+    (
+      scoreHome !== null &&
+      scoreAway !== null
+    );
 
   let winner = null;
 
-  if (played && scoreHome !== scoreAway) {
-    winner = scoreHome > scoreAway
-      ? match.home
-      : match.away;
+  if (
+    played &&
+    scoreHome !== scoreAway
+  ) {
+    winner =
+      scoreHome > scoreAway
+        ? match.home
+        : match.away;
   }
 
   return {
@@ -110,9 +154,10 @@ function normalizeMatch(match) {
     played,
     winner,
 
-    status: played
-      ? 'completed'
-      : match?.status || 'scheduled',
+    status:
+      played
+        ? 'completed'
+        : match?.status || 'scheduled',
 
     scoreHomeSubmittedAt:
       match?.scoreHomeSubmittedAt || null,
@@ -121,7 +166,25 @@ function normalizeMatch(match) {
       match?.scoreAwaySubmittedAt || null,
 
     managerEditedAt:
-      match?.managerEditedAt || null
+      match?.managerEditedAt || null,
+
+    /*
+     * Stato condiviso di fine partita.
+     * Nessuna singola mano viene salvata qui.
+     */
+    finishTriggered:
+      Boolean(match?.finishTriggered),
+
+    finishHandCount:
+      Number.isInteger(match?.finishHandCount)
+        ? match.finishHandCount
+        : null,
+
+    finishTriggeredBy:
+      match?.finishTriggeredBy || null,
+
+    finishTriggeredAt:
+      match?.finishTriggeredAt || null
   };
 }
 
@@ -134,25 +197,27 @@ function saveTournamentData(tournament) {
 }
 
 function normalizeTournamentShape(raw) {
- 
-  if (raw && raw.config && raw.state) {
+  if (
+    raw &&
+    raw.config &&
+    raw.state
+  ) {
     return {
       config: {
         ...deepClone(defaultTournament.config),
         ...raw.config,
 
         manualGroups: {
-          ...deepClone(defaultTournament.config.manualGroups),
+          ...deepClone(
+            defaultTournament.config.manualGroups
+          ),
           ...(raw.config.manualGroups || {})
         },
 
         manualAccessCodes: {
-          ...deepClone(defaultTournament.config.manualAccessCodes),
-
-          /*
-           * Compatibilità anche con l'eventuale vecchio typo:
-           * manualAccesCodes
-           */
+          ...deepClone(
+            defaultTournament.config.manualAccessCodes
+          ),
           ...(
             raw.config.manualAccessCodes ||
             raw.config.manualAccesCodes ||
@@ -161,7 +226,9 @@ function normalizeTournamentShape(raw) {
         },
 
         pointsSystem: {
-          ...deepClone(defaultTournament.config.pointsSystem),
+          ...deepClone(
+            defaultTournament.config.pointsSystem
+          ),
           ...(raw.config.pointsSystem || {})
         }
       },
@@ -170,52 +237,81 @@ function normalizeTournamentShape(raw) {
         ...deepClone(defaultTournament.state),
         ...raw.state,
 
+        /*
+         * I socketId salvati su disco non sono più validi
+         * dopo un riavvio del server. I telefoni faranno
+         * auto-login con il localStorage.
+         */
+        connectedTeams: [],
+
         groups: {
-          ...deepClone(defaultTournament.state.groups),
+          ...deepClone(
+            defaultTournament.state.groups
+          ),
           ...(raw.state.groups || {})
         },
 
         groupStandings: {
-          ...deepClone(defaultTournament.state.groupStandings),
+          ...deepClone(
+            defaultTournament.state.groupStandings
+          ),
           ...(raw.state.groupStandings || {})
         },
 
         audit: {
-          ...deepClone(defaultTournament.state.audit),
+          ...deepClone(
+            defaultTournament.state.audit
+          ),
           ...(raw.state.audit || {})
         },
 
         activeGroupRound:
-          Number.isInteger(raw.state.activeGroupRound)
+          Number.isInteger(
+            raw.state.activeGroupRound
+          )
             ? raw.state.activeGroupRound
             : null,
 
         groupMatches:
-          Array.isArray(raw.state.groupMatches)
-            ? raw.state.groupMatches.map(normalizeMatch)
+          Array.isArray(
+            raw.state.groupMatches
+          )
+            ? raw.state.groupMatches.map(
+                normalizeMatch
+              )
             : []
       }
     };
   }
 
   return {
-    config: deepClone(defaultTournament.config),
+    config: deepClone(
+      defaultTournament.config
+    ),
 
     state: {
-      ...deepClone(defaultTournament.state),
+      ...deepClone(
+        defaultTournament.state
+      ),
 
       phase:
-        raw?.phase || 'waiting-room',
+        raw?.phase ||
+        'waiting-room',
 
       expectedTeams:
-        Number.isInteger(raw?.expectedTeams)
+        Number.isInteger(
+          raw?.expectedTeams
+        )
           ? raw.expectedTeams
           : 12,
 
       registeredTeams:
         Array.isArray(raw?.teams)
           ? raw.teams
-              .map(team => team.name || '')
+              .map(
+                (team) =>
+                  team.name || ''
+              )
               .filter(Boolean)
           : [],
 
@@ -228,24 +324,24 @@ function normalizeTournamentShape(raw) {
 }
 
 function loadTournamentData() {
-  /*
-   * Se tournament.json non esiste,
-   * viene creato automaticamente.
-   */
   if (!fs.existsSync(DATA_FILE)) {
-    const initial = deepClone(defaultTournament);
+    const initial = deepClone(
+      defaultTournament
+    );
 
     saveTournamentData(initial);
-
     return initial;
   }
 
   try {
-    const fileContent =
-      fs.readFileSync(DATA_FILE, 'utf-8');
+    const fileContent = fs.readFileSync(
+      DATA_FILE,
+      'utf-8'
+    );
 
-    const parsed =
-      JSON.parse(fileContent);
+    const parsed = JSON.parse(
+      fileContent
+    );
 
     const normalized =
       normalizeTournamentShape(parsed);
@@ -253,15 +349,17 @@ function loadTournamentData() {
     saveTournamentData(normalized);
 
     return normalized;
+  }
 
-  } catch (error) {
+  catch (error) {
     console.error(
       'Errore durante il caricamento del torneo:',
       error
     );
 
-    const initial =
-      deepClone(defaultTournament);
+    const initial = deepClone(
+      defaultTournament
+    );
 
     saveTournamentData(initial);
 

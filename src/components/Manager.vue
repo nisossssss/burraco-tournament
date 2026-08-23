@@ -16,6 +16,41 @@
         </span>
       </header>
 
+      <div
+        v-if="resetModalOpen"
+        class="modal-backdrop"
+        @click.self="closeResetModal"
+        >
+        <div class="modal-card">
+            <h2>
+            Resettare il torneo?
+            </h2>
+
+            <p>
+            Verranno cancellati calendario,
+            risultati e stato corrente del torneo.
+            </p>
+
+            <div class="modal-actions">
+            <button
+                class="button"
+                type="button"
+                @click="closeResetModal"
+            >
+                Annulla
+            </button>
+
+            <button
+                class="button danger"
+                type="button"
+                @click="confirmResetTournament"
+            >
+                Reset torneo
+            </button>
+            </div>
+        </div>
+    </div>
+
       <!-- STATISTICHE -->
       <section class="stats-grid">
         <article class="stat-card">
@@ -85,10 +120,10 @@
           <button
             class="button danger"
             type="button"
-            @click="resetTournament"
-          >
+            @click="openResetModal"
+            >
             Reset torneo
-          </button>
+            </button>
         </div>
 
         <button
@@ -599,7 +634,10 @@ const {
   saveSettings,
   generateGroupMatches,
   startRound,
-  resetTournament,
+  resetModalOpen,
+  openResetModal,
+  closeResetModal,
+  confirmResetTournament,
 
   isRoundComplete,
   isRoundCompleteForGroup,

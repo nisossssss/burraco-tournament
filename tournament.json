@@ -5,6 +5,7 @@
     "playersPerTeam": 2,
     "groupCount": 2,
     "teamsPerGroup": 6,
+    "groupTargetScore": 1005,
     "groupPhaseDay": 1,
     "knockoutPhaseDay": 2,
     "groupAssignmentMode": "fixed",
@@ -75,29 +76,98 @@
   },
   "state": {
     "phase": "waiting-room",
-    "expectedTeams": 2,
-    "connectedTeams": [],
+    "expectedTeams": 12,
+    "connectedTeams": [
+      {
+        "id": "team-1787508017192-88094",
+        "name": "Squadra 12",
+        "socketId": "7DxiqbodquR3tpaiAAA0",
+        "connected": true
+      },
+      {
+        "id": "team-1787508022204-3715",
+        "name": "Squadra 11",
+        "socketId": "EfMJEg8geQ81P_wpAAA1",
+        "connected": true
+      },
+      {
+        "id": "team-1787508029036-91475",
+        "name": "Squadra 10",
+        "socketId": "AUwbTztqAasP0fcdAAA3",
+        "connected": true
+      },
+      {
+        "id": "team-1787508034099-13349",
+        "name": "Squadra 9",
+        "socketId": "C0xttCZ4tRAllcHMAAA2",
+        "connected": true
+      },
+      {
+        "id": "team-1787508038760-29832",
+        "name": "Squadra 1",
+        "socketId": "kx6iKJYlg-ewXhOCAAAp",
+        "connected": true
+      },
+      {
+        "id": "team-1787508045298-7999",
+        "name": "Squadra 2",
+        "socketId": "STS6JYZM_8Di24q8AAAt",
+        "connected": true
+      },
+      {
+        "id": "team-1787508049305-74443",
+        "name": "Squadra 3",
+        "socketId": "VfVR1SnKhekgEx8GAAAu",
+        "connected": true
+      },
+      {
+        "id": "team-1787508055087-83026",
+        "name": "Squadra 4",
+        "socketId": "xOZ9YeFFLhsT1WD9AAAv",
+        "connected": true
+      },
+      {
+        "id": "team-1787508065633-69259",
+        "name": "Squadra 6",
+        "socketId": "przEFMChGWH-ze6iAAAm",
+        "connected": true
+      },
+      {
+        "id": "team-1787508070217-2144",
+        "name": "Squadra 7",
+        "socketId": "qSaFFDMlgmd4pzZYAAAk",
+        "connected": true
+      },
+      {
+        "id": "team-1787508075354-99331",
+        "name": "Squadra 8",
+        "socketId": "xGg1knGQF9N8dbSMAAAn",
+        "connected": true
+      },
+      {
+        "id": "team-1787508329313-46695",
+        "name": "Squadra 5",
+        "socketId": "fFXycLmv-fhfWP90AAA5",
+        "connected": true
+      }
+    ],
     "registeredTeams": [
+      "Squadra 12",
+      "Squadra 11",
+      "Squadra 10",
+      "Squadra 9",
       "Squadra 1",
-      "Squadra 2"
+      "Squadra 2",
+      "Squadra 3",
+      "Squadra 4",
+      "Squadra 6",
+      "Squadra 7",
+      "Squadra 8",
+      "Squadra 5"
     ],
     "groups": {
-      "G1": [
-        "Squadra 1",
-        "Squadra 2",
-        "Squadra 3",
-        "Squadra 4",
-        "Squadra 5",
-        "Squadra 6"
-      ],
-      "G2": [
-        "Squadra 7",
-        "Squadra 8",
-        "Squadra 9",
-        "Squadra 10",
-        "Squadra 11",
-        "Squadra 12"
-      ]
+      "G1": [],
+      "G2": []
     },
     "groupMatches": [],
     "groupStandings": {
@@ -107,8 +177,8 @@
     "activeGroupRound": null,
     "knockoutMatches": [],
     "audit": {
-      "createdAt": "2026-08-23T15:47:37.928Z",
-      "updatedAt": "2026-08-23T15:49:22.380Z"
+      "createdAt": "2026-08-23T18:02:45.221Z",
+      "updatedAt": "2026-08-23T18:05:29.313Z"
     }
   }
 }

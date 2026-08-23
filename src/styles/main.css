@@ -1362,3 +1362,1021 @@ input:focus {
     border-radius: 17px;
   }
 }
+
+/* =========================================================
+   SELETTORE MODALITÀ PUNTEGGIO
+========================================================= */
+
+.score-method {
+  margin-top: 20px;
+  padding-top: 18px;
+
+  border-top: 1px solid #edf1f5;
+}
+
+.score-method h2 {
+  margin-bottom: 14px;
+
+  color: #172033;
+
+  font-size: 1.08rem;
+}
+
+.score-method-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 6px;
+
+  padding: 5px;
+
+  border-radius: 13px;
+
+  background: #eef2f6;
+}
+
+.score-method-tabs button {
+  min-height: 44px;
+
+  padding: 8px 10px;
+
+  border: 0;
+  border-radius: 9px;
+
+  color: #64748b;
+  background: transparent;
+
+  font-size: 0.8rem;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.score-method-tabs button:active {
+  transform: scale(0.98);
+}
+
+.score-method-tabs button.active {
+  color: #172033;
+  background: white;
+
+  box-shadow:
+    0 2px 8px
+    rgba(15, 23, 42, 0.08);
+}
+
+
+/* =========================================================
+   CONTATORE PARTITA
+========================================================= */
+
+.hands-counter {
+  margin-top: 15px;
+}
+
+.hands-total-card {
+  padding: 20px 18px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  border: 1px solid #cbdcf9;
+  border-radius: 17px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f7faff,
+      #eef5ff
+    );
+
+  text-align: center;
+}
+
+.hands-total-card > span {
+  color: #64748b;
+
+  font-size: 0.72rem;
+  font-weight: 900;
+
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hands-total-card > strong {
+  margin-top: 3px;
+
+  color: #1d4ed8;
+
+  font-size: 2.7rem;
+  line-height: 1;
+}
+
+.hands-total-card > small {
+  margin-top: 5px;
+
+  color: #718096;
+
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   BARRA PROGRESSO
+========================================================= */
+
+.score-progress-track {
+  width: 100%;
+  height: 9px;
+
+  margin-top: 15px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background: #dce8f8;
+}
+
+.score-progress-fill {
+  width: 0%;
+  height: 100%;
+
+  border-radius: inherit;
+
+  background: #2563eb;
+
+  transition:
+    width 0.3s ease;
+}
+
+
+/* =========================================================
+   TARGET / STATO PARTITA
+========================================================= */
+
+.target-message {
+  margin-top: 11px;
+  padding: 11px 12px;
+
+  border: 1px solid #d8e2ef;
+  border-radius: 11px;
+
+  color: #53657a;
+  background: #f8fafc;
+
+  font-size: 0.78rem;
+  font-weight: 700;
+
+  line-height: 1.45;
+  text-align: center;
+}
+
+.target-message.success {
+  border-color: #b9e2cc;
+
+  color: #14764e;
+  background: #effaf4;
+
+  font-weight: 900;
+}
+
+
+/* =========================================================
+   STORICO MANI
+========================================================= */
+
+.hands-list {
+  margin-top: 14px;
+
+  overflow: hidden;
+
+  border: 1px solid #e1e7ee;
+  border-radius: 14px;
+
+  background: white;
+}
+
+.hand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 13px;
+
+  border-bottom: 1px solid #edf1f5;
+}
+
+.hand-row:last-child {
+  border-bottom: 0;
+}
+
+.hand-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.hand-info > span {
+  color: #8491a3;
+
+  font-size: 0.7rem;
+  font-weight: 800;
+
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hand-info > strong {
+  color: #14764e;
+
+  font-size: 1.12rem;
+}
+
+.hand-info > strong.negative {
+  color: #b42318;
+}
+
+.hand-summary {
+  color: #8491a3;
+
+  font-size: 0.67rem;
+
+  line-height: 1.35;
+}
+
+.hand-actions {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+}
+
+.hand-actions button {
+  padding: 6px 7px;
+
+  border: 0;
+
+  color: #2563eb;
+  background: transparent;
+
+  font-size: 0.7rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.hand-actions button.delete {
+  color: #b42318;
+}
+
+
+/* =========================================================
+   CONFERMA ELIMINAZIONE MANO
+========================================================= */
+
+.hand-delete-confirm {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+}
+
+.hand-delete-confirm > span {
+  color: #64748b;
+
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.hand-delete-confirm button {
+  padding: 5px 7px;
+
+  border: 1px solid #d6dee8;
+  border-radius: 7px;
+
+  background: white;
+
+  font-size: 0.68rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.hand-delete-confirm button.danger {
+  border-color: #fecaca;
+
+  color: #b42318;
+  background: #fff1f2;
+}
+
+
+/* =========================================================
+   EDITOR MANO
+========================================================= */
+
+.hand-editor-card {
+  margin-top: 16px;
+  padding: 15px;
+
+  border: 1px solid #dfe6ee;
+  border-radius: 16px;
+
+  background: #f8fafc;
+}
+
+.hand-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-bottom: 16px;
+}
+
+.hand-editor-header h3 {
+  margin-bottom: 0;
+
+  color: #172033;
+
+  font-size: 1.05rem;
+}
+
+.current-hand-total {
+  flex-shrink: 0;
+
+  color: #14764e;
+
+  font-size: 1.55rem;
+}
+
+.current-hand-total.negative {
+  color: #b42318;
+}
+
+
+/* =========================================================
+   CAMPI MANO
+========================================================= */
+
+.hand-field {
+  display: block;
+
+  margin-bottom: 13px;
+}
+
+.hand-field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 6px;
+}
+
+.hand-field-heading > span,
+.hand-field > span,
+.field-title {
+  color: #334155;
+
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.hand-field-heading > small {
+  color: #64748b;
+
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.hand-field-heading > small.positive-label {
+  color: #16845b;
+}
+
+.hand-field-heading > small.negative-label {
+  color: #b42318;
+}
+
+.hand-field input {
+  padding: 13px 12px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  background: white;
+
+  font-size: 1.15rem;
+  font-weight: 900;
+
+  text-align: center;
+}
+
+.hand-field > small {
+  display: block;
+
+  margin-top: 5px;
+
+  color: #8491a3;
+
+  font-size: 0.68rem;
+
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   POZZETTO
+========================================================= */
+
+.pozzetto-section {
+  margin-top: 5px;
+  padding-top: 14px;
+
+  border-top: 1px solid #e2e8f0;
+}
+
+.pozzetto-options {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap: 7px;
+
+  margin-top: 8px;
+}
+
+.pozzetto-options button {
+  min-height: 72px;
+
+  padding: 9px 6px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 3px;
+
+  border: 1px solid #d7e0ea;
+  border-radius: 11px;
+
+  color: #475569;
+  background: white;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+
+.pozzetto-options button:active {
+  transform: scale(0.97);
+}
+
+.pozzetto-options button strong {
+  font-size: 0.74rem;
+}
+
+.pozzetto-options button small {
+  color: #8491a3;
+
+  font-size: 0.61rem;
+
+  text-align: center;
+}
+
+.pozzetto-options button.active {
+  border-color: #2563eb;
+
+  color: #1d4ed8;
+  background: #eef5ff;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(37, 99, 235, 0.07);
+}
+
+.pozzetto-options button.active small {
+  color: #4774b8;
+}
+
+.pozzetto-value {
+  margin-top: 11px;
+  margin-bottom: 0;
+}
+
+
+/* =========================================================
+   RIEPILOGO MANO
+========================================================= */
+
+.hand-breakdown {
+  margin-top: 16px;
+  padding: 12px;
+
+  border: 1px solid #dce3eb;
+  border-radius: 12px;
+
+  background: white;
+}
+
+.hand-breakdown > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  padding: 5px 2px;
+
+  color: #64748b;
+
+  font-size: 0.77rem;
+}
+
+.hand-breakdown > div strong {
+  color: #16845b;
+}
+
+.hand-breakdown > div strong.negative {
+  color: #b42318;
+}
+
+.hand-breakdown-total {
+  margin-top: 7px;
+  padding-top: 10px !important;
+
+  border-top: 1px solid #dfe5ec;
+
+  color: #172033 !important;
+
+  font-weight: 900;
+}
+
+.hand-breakdown-total strong {
+  color: #172033 !important;
+
+  font-size: 1.15rem;
+}
+
+.hand-breakdown-total strong.negative {
+  color: #b42318 !important;
+}
+
+
+/* =========================================================
+   AZIONI EDITOR MANO
+========================================================= */
+
+.hand-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  margin-top: 14px;
+}
+
+.hand-editor-actions .button {
+  flex: 1;
+}
+
+.hand-editor-actions .button.primary {
+  flex: 2;
+}
+
+
+/* =========================================================
+   AZZERA CONTEGGIO
+========================================================= */
+
+.hands-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 10px;
+}
+
+.clear-hands-button {
+  padding: 6px;
+
+  border: 0;
+
+  color: #b42318;
+  background: transparent;
+
+  font-size: 0.72rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.clear-confirm-box {
+  width: 100%;
+
+  padding: 10px 11px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fff7f7;
+}
+
+.clear-confirm-box > span {
+  color: #7f1d1d;
+
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.clear-confirm-box > div {
+  display: flex;
+
+  gap: 5px;
+}
+
+.clear-confirm-box button {
+  padding: 5px 7px;
+
+  border: 1px solid #d6dee8;
+  border-radius: 7px;
+
+  background: white;
+
+  font-size: 0.68rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.clear-confirm-box button.danger {
+  border-color: #fecaca;
+
+  color: white;
+  background: #dc2626;
+}
+
+
+/* =========================================================
+   CONTINUA PARTITA
+========================================================= */
+
+.continue-match-message {
+  margin-top: 15px;
+  padding: 12px;
+
+  border: 1px solid #dfe6ee;
+  border-radius: 11px;
+
+  color: #64748b;
+  background: #f8fafc;
+
+  font-size: 0.78rem;
+
+  text-align: center;
+}
+
+.continue-match-message strong {
+  color: #1d4ed8;
+}
+
+
+/* =========================================================
+   TERMINA PARTITA
+========================================================= */
+
+.finish-match-card {
+  margin-top: 17px;
+  padding: 17px;
+
+  border: 1px solid #bfe3cf;
+  border-radius: 16px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f4fcf7,
+      #edf9f2
+    );
+
+  text-align: center;
+}
+
+.finish-match-card > span {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 0.7rem;
+  font-weight: 900;
+
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.finish-match-card > strong {
+  display: block;
+
+  margin: 4px 0 5px;
+
+  color: #14764e;
+
+  font-size: 2.2rem;
+}
+
+.finish-match-card > p {
+  margin: 0 0 13px;
+
+  color: #637568;
+
+  font-size: 0.77rem;
+
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   MODALE GENERALE
+   usata sia da Reset che da conferma risultato
+========================================================= */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.55);
+
+  backdrop-filter: blur(5px);
+}
+
+.modal-card {
+  width: min(
+    100%,
+    420px
+  );
+
+  padding: 24px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 19px;
+
+  background: white;
+
+  box-shadow:
+    0 24px 70px
+    rgba(15, 23, 42, 0.28);
+}
+
+.modal-card h2 {
+  margin-bottom: 9px;
+}
+
+.modal-card p {
+  margin-bottom: 12px;
+
+  color: #64748b;
+
+  font-size: 0.85rem;
+
+  line-height: 1.5;
+}
+
+.confirmation-score {
+  color: #1d4ed8;
+
+  font-size: 2rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  margin-top: 20px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1150px) {
+
+  .tournament-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .standings-card {
+    position: static;
+  }
+
+  .groups-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+}
+
+
+@media (max-width: 760px) {
+
+  .app-shell {
+    padding: 10px;
+  }
+
+  .switcher {
+    display: none;
+  }
+
+  .manager-panel {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 6px;
+  }
+
+  .groups-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .phone-card {
+    padding: 18px;
+
+    border-radius: 17px;
+  }
+
+}
+
+
+@media (max-width: 480px) {
+
+  .phone-page {
+    padding-top: 4px;
+  }
+
+  .phone-card {
+    padding: 16px;
+  }
+
+  .phone-versus {
+    grid-template-columns:
+      minmax(0, 1fr)
+      38px
+      minmax(0, 1fr);
+  }
+
+  .vs {
+    width: 36px;
+    height: 36px;
+  }
+
+
+  /* POZZETTO SU MOBILE */
+
+  .pozzetto-options {
+    grid-template-columns: 1fr;
+  }
+
+  .pozzetto-options button {
+    min-height: 54px;
+
+    flex-direction: row;
+    justify-content: space-between;
+
+    padding: 10px 12px;
+
+    text-align: left;
+  }
+
+
+  /* STORICO */
+
+  .hand-row {
+    align-items: flex-start;
+  }
+
+  .hand-actions {
+    flex-direction: column;
+
+    align-items: flex-end;
+  }
+
+  .hand-delete-confirm {
+    flex-direction: column;
+
+    align-items: flex-end;
+  }
+
+
+  /* EDITOR */
+
+  .hand-editor-card {
+    padding: 13px;
+  }
+
+  .hand-editor-header {
+    align-items: flex-start;
+  }
+
+  .current-hand-total {
+    font-size: 1.35rem;
+  }
+
+
+  /* AZIONI */
+
+  .hand-editor-actions {
+    flex-direction: column;
+  }
+
+  .hand-editor-actions .button {
+    width: 100%;
+  }
+
+
+  /* CONFERMA AZZERAMENTO */
+
+  .clear-confirm-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clear-confirm-box > div {
+    justify-content: flex-end;
+  }
+
+
+  /* MODALE */
+
+  .modal-card {
+    padding: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions .button {
+    width: 100%;
+  }
+
+}
