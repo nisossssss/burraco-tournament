@@ -1,0 +1,110 @@
+{
+  "config": {
+    "tournamentName": "Torneo Burraco",
+    "teamsCount": 12,
+    "playersPerTeam": 2,
+    "groupCount": 2,
+    "teamsPerGroup": 6,
+    "groupPhaseDay": 1,
+    "knockoutPhaseDay": 2,
+    "groupAssignmentMode": "fixed",
+    "manualGroups": {
+      "G1": [
+        "Squadra 1",
+        "Squadra 2",
+        "Squadra 3",
+        "Squadra 4",
+        "Squadra 5",
+        "Squadra 6"
+      ],
+      "G2": [
+        "Squadra 7",
+        "Squadra 8",
+        "Squadra 9",
+        "Squadra 10",
+        "Squadra 11",
+        "Squadra 12"
+      ]
+    },
+    "manualAccessCodes": {
+      "Squadra 1": "A1",
+      "Squadra 2": "A2",
+      "Squadra 3": "A3",
+      "Squadra 4": "A4",
+      "Squadra 5": "A5",
+      "Squadra 6": "A6",
+      "Squadra 7": "A7",
+      "Squadra 8": "A8",
+      "Squadra 9": "A9",
+      "Squadra 10": "A10",
+      "Squadra 11": "A11",
+      "Squadra 12": "A12"
+    },
+    "pointsSystem": {
+      "win": 1,
+      "loss": 0
+    },
+    "tiebreakRules": [
+      "head_to_head",
+      "points_difference",
+      "draw_lots"
+    ],
+    "qualifiedPerGroup": 4,
+    "knockoutTemplate": [
+      {
+        "slot": "QF1",
+        "home": "G1_1",
+        "away": "G2_4"
+      },
+      {
+        "slot": "QF2",
+        "home": "G1_2",
+        "away": "G2_3"
+      },
+      {
+        "slot": "QF3",
+        "home": "G2_1",
+        "away": "G1_4"
+      },
+      {
+        "slot": "QF4",
+        "home": "G2_2",
+        "away": "G1_3"
+      }
+    ]
+  },
+  "state": {
+    "phase": "waiting-room",
+    "expectedTeams": 12,
+    "connectedTeams": [],
+    "registeredTeams": [],
+    "groups": {
+      "G1": [
+        "Squadra 1",
+        "Squadra 2",
+        "Squadra 3",
+        "Squadra 4",
+        "Squadra 5",
+        "Squadra 6"
+      ],
+      "G2": [
+        "Squadra 7",
+        "Squadra 8",
+        "Squadra 9",
+        "Squadra 10",
+        "Squadra 11",
+        "Squadra 12"
+      ]
+    },
+    "groupMatches": [],
+    "groupStandings": {
+      "G1": [],
+      "G2": []
+    },
+    "knockoutMatches": [],
+    "audit": {
+      "createdAt": "2026-08-23T13:52:50.995Z",
+      "updatedAt": "2026-08-23T13:52:50.995Z"
+    }
+  }
+}
