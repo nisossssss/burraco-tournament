@@ -75,9 +75,12 @@
   },
   "state": {
     "phase": "waiting-room",
-    "expectedTeams": 12,
+    "expectedTeams": 2,
     "connectedTeams": [],
-    "registeredTeams": [],
+    "registeredTeams": [
+      "Squadra 1",
+      "Squadra 2"
+    ],
     "groups": {
       "G1": [
         "Squadra 1",
@@ -101,10 +104,11 @@
       "G1": [],
       "G2": []
     },
+    "activeGroupRound": null,
     "knockoutMatches": [],
     "audit": {
-      "createdAt": "2026-08-23T13:52:50.995Z",
-      "updatedAt": "2026-08-23T13:52:50.995Z"
+      "createdAt": "2026-08-23T15:47:37.928Z",
+      "updatedAt": "2026-08-23T15:49:22.380Z"
     }
   }
 }
