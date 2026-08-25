@@ -20,6 +20,13 @@ const defaultTournament = {
 
     groupTargetScore: 1005,
 
+    /*
+     * Per ora i quarti usano lo stesso
+     * obiettivo dei gironi. Potrai cambiarlo
+     * in seguito senza toccare il frontend.
+     */
+    quarterFinalTargetScore: 1005,
+
     groupPhaseDay: 1,
     knockoutPhaseDay: 2,
 
@@ -39,6 +46,9 @@ const defaultTournament = {
     },
 
     manualAccessCodes: {},
+    manualTeamImages: {
+      "Diesel": "/teams/diesel.jpg"
+    },
 
     pointsSystem: {
       win: 1,
@@ -97,8 +107,6 @@ const defaultTournament = {
       G1: [],
       G2: []
     },
-
-    activeGroupRound: null,
 
     knockoutMatches: [],
 
@@ -168,6 +176,16 @@ function normalizeMatch(match) {
     managerEditedAt:
       match?.managerEditedAt || null,
 
+    startedAt:
+      match?.startedAt || null,
+
+    resetVersion:
+      Number.isInteger(
+        match?.resetVersion
+      )
+        ? match.resetVersion
+        : 0,
+
     /*
      * Stato condiviso di fine partita.
      * Nessuna singola mano viene salvata qui.
@@ -225,6 +243,13 @@ function normalizeTournamentShape(raw) {
           )
         },
 
+        manualTeamImages: {
+          ...deepClone(
+            defaultTournament.config.manualTeamImages
+          ),
+          ...(raw.config.manualTeamImages || {})
+        },
+
         pointsSystem: {
           ...deepClone(
             defaultTournament.config.pointsSystem
@@ -264,19 +289,24 @@ function normalizeTournamentShape(raw) {
           ),
           ...(raw.state.audit || {})
         },
-
-        activeGroupRound:
-          Number.isInteger(
-            raw.state.activeGroupRound
-          )
-            ? raw.state.activeGroupRound
-            : null,
+        /* I vecchi campi activeGroupRound(s) non sono più usati. */
+        activeGroupRounds: undefined,
+        activeGroupRound: undefined,
 
         groupMatches:
           Array.isArray(
             raw.state.groupMatches
           )
             ? raw.state.groupMatches.map(
+                normalizeMatch
+              )
+            : [],
+
+        knockoutMatches:
+          Array.isArray(
+            raw.state.knockoutMatches
+          )
+            ? raw.state.knockoutMatches.map(
                 normalizeMatch
               )
             : []

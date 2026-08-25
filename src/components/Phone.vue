@@ -2,15 +2,48 @@
   <section class="phone-page">
     <div class="phone-card">
 
+        <!-- AVVISI / ERRORI -->
+        <div
+          v-if="noticeModalOpen"
+          class="modal-backdrop"
+          @click.self="closeNoticeModal"
+        >
+          <div class="modal-card">
+            <p class="eyebrow">
+              Avviso
+            </p>
+
+            <h2>
+              {{ noticeModalTitle }}
+            </h2>
+
+            <p>
+              {{ noticeModalMessage }}
+            </p>
+
+            <div class="modal-actions">
+              <button
+                class="button primary"
+                type="button"
+                @click="closeNoticeModal"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+
+
+
       <!-- LOGIN -->
       <template v-if="!isPhoneConnected">
-        <header class="phone-login-header">
+        <header class="phone-login-header premium-login-header">
           <div class="logo-circle">♣</div>
           <p class="eyebrow">Torneo Burraco</p>
-          <h1>Entra al torneo</h1>
+          <h1>Benvenuto al tavolo</h1>
           <p>
-            Inserisci il nome della tua squadra
-            e il codice ricevuto dal manager.
+            Accedi con la tua squadra per vedere partite,
+            avversari e segnare il risultato in tempo reale.
           </p>
         </header>
 
@@ -50,6 +83,37 @@
           </button>
         </form>
 
+        <!-- ACCESSO RAPIDO SOLO PER TEST -->
+        <section
+          v-if="testTeams.length"
+          class="test-login-panel"
+        >
+          <div class="test-login-header">
+            <span>TEST</span>
+            <strong>Accesso rapido squadre</strong>
+          </div>
+
+          <div class="test-login-grid">
+            <button
+              v-for="team in testTeams"
+              :key="team.name"
+              type="button"
+              class="test-login-button"
+              @click="quickLogin(team)"
+            >
+              <div class="team-avatar test-avatar">
+                <img
+                  v-if="teamImage(team.name)"
+                  :src="teamImage(team.name)"
+                  :alt="`Logo ${team.name}`"
+                />
+                <span v-else>{{ teamInitial(team.name) }}</span>
+              </div>
+              <span>{{ team.name }}</span>
+            </button>
+          </div>
+        </section>
+
         <p
           class="phone-status"
           :class="{ error: phoneHasError }"
@@ -60,10 +124,24 @@
 
       <!-- SQUADRA CONNESSA -->
       <template v-else>
-        <header class="phone-team-header">
-          <div>
-            <p class="eyebrow">Squadra</p>
-            <h1>{{ joinedTeamName }}</h1>
+        <header class="phone-team-header premium-team-header">
+          <div class="phone-team-identity">
+            <div class="team-avatar profile-avatar">
+              <img
+                v-if="teamImage(joinedTeamName)"
+                :src="teamImage(joinedTeamName)"
+                :alt="`Logo ${joinedTeamName}`"
+              />
+              <span v-else>{{ teamInitial(joinedTeamName) }}</span>
+            </div>
+
+            <div>
+              <p class="eyebrow">La tua squadra</p>
+              <h1>{{ joinedTeamName }}</h1>
+              <small class="team-online-label">
+                <span></span> Connessa al torneo
+              </small>
+            </div>
           </div>
 
           <button
@@ -88,25 +166,77 @@
           </p>
         </section>
 
-        <!-- NESSUN TURNO ATTIVO -->
+        <!-- NESSUNA PARTITA ATTIVA -->
         <section
-          v-else-if="!tournament.state.activeGroupRound"
+          v-else-if="!currentTeamMatch"
           class="phone-state waiting"
         >
-          <div class="state-icon">✓</div>
-          <h2>Calendario pronto</h2>
-          <p>
-            Attendi che il manager avvii il turno.
-          </p>
+          <template
+            v-if="tournament.state.phase === 'quarter_finals'"
+          >
+            <div
+              class="state-icon"
+              :class="{
+                success: isQualifiedForQuarterFinals
+              }"
+            >
+              {{ isQualifiedForQuarterFinals ? '✓' : '—' }}
+            </div>
+
+            <h2>
+              {{
+                isQualifiedForQuarterFinals
+                  ? 'Qualificati ai quarti'
+                  : 'Fase a gironi conclusa'
+              }}
+            </h2>
+
+            <p>
+              {{
+                isQualifiedForQuarterFinals
+                  ? 'Attendi che il manager avvii il tuo quarto di finale.'
+                  : 'La tua squadra non si è qualificata ai quarti di finale.'
+              }}
+            </p>
+          </template>
+
+          <template v-else>
+            <div class="state-icon">✓</div>
+            <h2>Calendario pronto</h2>
+            <p>
+              Attendi che il manager avvii una delle tue partite.
+            </p>
+          </template>
 
           <div
             v-if="nextScheduledMatch"
-            class="next-match"
+            class="next-match premium-next-match"
           >
-            <span>Prossima partita</span>
-            <strong>
-              vs {{ opponentFor(nextScheduledMatch) }}
-            </strong>
+            <div class="team-avatar next-opponent-avatar">
+              <img
+                v-if="teamImage(opponentFor(nextScheduledMatch))"
+                :src="teamImage(opponentFor(nextScheduledMatch))"
+                :alt="`Logo ${opponentFor(nextScheduledMatch)}`"
+              />
+              <span v-else>
+                {{ teamInitial(opponentFor(nextScheduledMatch)) }}
+              </span>
+            </div>
+
+            <div class="next-match-copy">
+              <span>
+                {{
+                  nextScheduledMatch.stage === 'quarter_final'
+                    ? 'Quarto di finale'
+                    : 'Prossima partita'
+                }}
+              </span>
+              <strong>
+                {{ opponentFor(nextScheduledMatch) }}
+              </strong>
+            </div>
+
+            <span class="next-match-arrow">›</span>
           </div>
         </section>
 
@@ -117,7 +247,7 @@
         >
           <header class="phone-match-header">
             <span>
-              Turno {{ currentTeamMatch.round }}
+              {{ matchStageLabel(currentTeamMatch) }}
             </span>
 
             <span
@@ -128,9 +258,19 @@
             </span>
           </header>
 
-          <div class="phone-versus">
+          <div class="phone-versus premium-versus">
             <div class="phone-team mine">
               <span>Tu</span>
+
+              <div class="team-avatar versus-avatar">
+                <img
+                  v-if="teamImage(joinedTeamName)"
+                  :src="teamImage(joinedTeamName)"
+                  :alt="`Logo ${joinedTeamName}`"
+                />
+                <span v-else>{{ teamInitial(joinedTeamName) }}</span>
+              </div>
+
               <strong>{{ joinedTeamName }}</strong>
             </div>
 
@@ -138,6 +278,18 @@
 
             <div class="phone-team">
               <span>Avversario</span>
+
+              <div class="team-avatar versus-avatar">
+                <img
+                  v-if="teamImage(opponentFor(currentTeamMatch))"
+                  :src="teamImage(opponentFor(currentTeamMatch))"
+                  :alt="`Logo ${opponentFor(currentTeamMatch)}`"
+                />
+                <span v-else>
+                  {{ teamInitial(opponentFor(currentTeamMatch)) }}
+                </span>
+              </div>
+
               <strong>
                 {{ opponentFor(currentTeamMatch) }}
               </strong>
@@ -670,13 +822,26 @@
               {{ formatScore(myScore(currentTeamMatch)) }}
             </strong>
 
-            <p>
-              In attesa che
-              <strong>
-                {{ opponentFor(currentTeamMatch) }}
-              </strong>
-              inserisca il proprio risultato.
-            </p>
+            <div class="submitted-opponent">
+              <div class="team-avatar small">
+                <img
+                  v-if="teamImage(opponentFor(currentTeamMatch))"
+                  :src="teamImage(opponentFor(currentTeamMatch))"
+                  :alt="`Logo ${opponentFor(currentTeamMatch)}`"
+                />
+                <span v-else>
+                  {{ teamInitial(opponentFor(currentTeamMatch)) }}
+                </span>
+              </div>
+
+              <p>
+                In attesa che
+                <strong>
+                  {{ opponentFor(currentTeamMatch) }}
+                </strong>
+                inserisca il proprio risultato.
+              </p>
+            </div>
 
             <small>
               Se hai commesso un errore,
@@ -694,16 +859,40 @@
             </p>
 
             <div class="final-score-row mine">
-              <span>{{ joinedTeamName }}</span>
+              <div class="final-team-identity">
+                <div class="team-avatar result-avatar">
+                  <img
+                    v-if="teamImage(joinedTeamName)"
+                    :src="teamImage(joinedTeamName)"
+                    :alt="`Logo ${joinedTeamName}`"
+                  />
+                  <span v-else>{{ teamInitial(joinedTeamName) }}</span>
+                </div>
+                <span>{{ joinedTeamName }}</span>
+              </div>
+
               <strong>
                 {{ formatScore(myScore(currentTeamMatch)) }}
               </strong>
             </div>
 
             <div class="final-score-row">
-              <span>
-                {{ opponentFor(currentTeamMatch) }}
-              </span>
+              <div class="final-team-identity">
+                <div class="team-avatar result-avatar">
+                  <img
+                    v-if="teamImage(opponentFor(currentTeamMatch))"
+                    :src="teamImage(opponentFor(currentTeamMatch))"
+                    :alt="`Logo ${opponentFor(currentTeamMatch)}`"
+                  />
+                  <span v-else>
+                    {{ teamInitial(opponentFor(currentTeamMatch)) }}
+                  </span>
+                </div>
+                <span>
+                  {{ opponentFor(currentTeamMatch) }}
+                </span>
+              </div>
+
               <strong>
                 {{ formatScore(opponentScore(currentTeamMatch)) }}
               </strong>
@@ -731,7 +920,7 @@
           <div class="state-icon">⏳</div>
           <h2>Nessuna partita attiva</h2>
           <p>
-            Attendi l'avvio del prossimo turno.
+            Attendi che il manager avvii una delle tue partite.
           </p>
         </section>
 
@@ -746,21 +935,39 @@
           </header>
 
           <article
-            v-for="match in teamSchedule"
+            v-for="(match, index) in teamSchedule"
             :key="`phone-${match.id}`"
             class="calendar-match"
             :class="{
               current:
-                match.round ===
-                tournament.state.activeGroupRound,
+                isMatchActive(
+                  match
+                ),
               completed: match.played
             }"
           >
-            <div>
-              <span>Turno {{ match.round }}</span>
-              <strong>
-                vs {{ opponentFor(match) }}
-              </strong>
+            <div class="calendar-opponent">
+              <div class="team-avatar calendar-avatar">
+                <img
+                  v-if="teamImage(opponentFor(match))"
+                  :src="teamImage(opponentFor(match))"
+                  :alt="`Logo ${opponentFor(match)}`"
+                />
+                <span v-else>{{ teamInitial(opponentFor(match)) }}</span>
+              </div>
+
+              <div>
+                <span>
+                  {{
+                    match.stage === 'quarter_final'
+                      ? 'Quarto di finale'
+                      : `Partita ${index + 1}`
+                  }}
+                </span>
+                <strong>
+                  {{ opponentFor(match) }}
+                </strong>
+              </div>
             </div>
 
             <strong
@@ -774,8 +981,9 @@
 
             <span
               v-else-if="
-                match.round ===
-                tournament.state.activeGroupRound
+                isMatchActive(
+                  match
+                )
               "
               class="calendar-live"
             >
@@ -797,6 +1005,46 @@
         >
           {{ statusMessage }}
         </p>
+
+        <!-- CONFERMA DISCONNESSIONE -->
+        <div
+          v-if="disconnectModalOpen"
+          class="modal-backdrop"
+          @click.self="closeDisconnectModal"
+        >
+          <div class="modal-card">
+            <p class="eyebrow">
+              Squadra
+            </p>
+
+            <h2>
+              Disconnettersi?
+            </h2>
+
+            <p>
+              Uscirai dalla sessione di
+              {{ joinedTeamName }} su questo dispositivo.
+            </p>
+
+            <div class="modal-actions">
+              <button
+                class="button"
+                type="button"
+                @click="closeDisconnectModal"
+              >
+                Annulla
+              </button>
+
+              <button
+                class="button danger"
+                type="button"
+                @click="confirmDisconnectTeam"
+              >
+                Disconnetti
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- MODALE CONFERMA RISULTATO -->
         <div
@@ -848,7 +1096,7 @@
 </template>
 
 <script setup>
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 
 const app = inject('tournamentApp');
 
@@ -871,13 +1119,27 @@ const {
   joinTeam,
   disconnectTeam,
 
+  disconnectModalOpen,
+  closeDisconnectModal,
+  confirmDisconnectTeam,
+
+  noticeModalOpen,
+  noticeModalTitle,
+  noticeModalMessage,
+  closeNoticeModal,
+
   teamSchedule,
   currentTeamMatch,
   nextScheduledMatch,
+  isQualifiedForQuarterFinals,
   myScore,
   opponentScore,
   opponentFor,
+  teamImage,
+  teamInitial,
   formatScore,
+  isMatchActive,
+  matchStageLabel,
   matchStatusLabel,
   matchStatusClass,
   phoneResultText,
@@ -924,4 +1186,33 @@ const {
   cancelScoreConfirmation,
   confirmSubmitMyScore
 } = app;
+
+/* =========================================================
+   ACCESSO RAPIDO - SOLO TEST
+========================================================= */
+
+const testTeams = computed(() => {
+  const codes =
+    tournament.value.config
+      ?.manualAccessCodes || {};
+
+  return Object.entries(codes)
+    .map(([name, code]) => ({
+      name,
+      code: String(code)
+    }))
+    .sort((a, b) =>
+      a.name.localeCompare(
+        b.name,
+        'it',
+        { numeric: true }
+      )
+    );
+});
+
+function quickLogin(team) {
+  teamName.value = team.name;
+  teamCode.value = team.code;
+  joinTeam();
+}
 </script>

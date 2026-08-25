@@ -35,7 +35,9 @@ export function useTournament() {
       manualGroups: {
         G1: [],
         G2: []
-      }
+      },
+
+      manualTeamImages: {}
     },
     state: {
       phase: 'waiting-room',
@@ -46,7 +48,6 @@ export function useTournament() {
         G2: []
       },
       groupMatches: [],
-      activeGroupRound: null,
       knockoutMatches: [],
       audit: {
         createdAt: null,
@@ -100,10 +101,112 @@ export function useTournament() {
   const managerScoreDrafts = reactive({});
 
   /* =========================================================
+     ANNULLA / RESETTA SINGOLA PARTITA
+  ========================================================= */
+
+  function cancelMatch(
+    match
+  ) {
+    if (!match) {
+      return;
+    }
+
+    if (
+      match.played ||
+      match.status === 'completed'
+    ) {
+      showNotice(
+        'Partita già completata',
+        'Una partita completata non può essere annullata. Puoi correggere il risultato dal manager.'
+      );
+
+      return;
+    }
+
+    if (match.status !== 'active') {
+      showNotice(
+        'Partita non in corso',
+        'Puoi annullare solo una partita attualmente in corso.'
+      );
+
+      return;
+    }
+
+    pendingMatchCancel.value =
+      match;
+
+    matchCancelModalOpen.value =
+      true;
+  }
+
+  function closeMatchCancelModal() {
+    matchCancelModalOpen.value =
+      false;
+
+    pendingMatchCancel.value =
+      null;
+  }
+
+  async function confirmCancelMatch() {
+    const match =
+      pendingMatchCancel.value;
+
+    if (!match?.id) {
+      closeMatchCancelModal();
+      return;
+    }
+
+    try {
+      tournament.value =
+        await apiRequest(
+          `/api/tournament/matches/${encodeURIComponent(
+            match.id
+          )}/cancel`,
+          {
+            method: 'POST'
+          }
+        );
+
+      if (
+        editingMatchId.value ===
+        match.id
+      ) {
+        editingMatchId.value =
+          null;
+      }
+
+      closeMatchCancelModal();
+    }
+
+    catch (error) {
+      closeMatchCancelModal();
+
+      showNotice(
+        'Impossibile annullare la partita',
+        error.message
+      );
+    }
+  }
+
+  /* =========================================================
      RESET
   ========================================================= */
 
   const resetModalOpen = ref(false);
+
+  const noticeModalOpen = ref(false);
+  const noticeModalTitle = ref('');
+  const noticeModalMessage = ref('');
+
+  const disconnectModalOpen = ref(false);
+
+  const drawModalOpen = ref(false);
+
+  const matchStartModalOpen = ref(false);
+  const pendingMatchStart = ref(null);
+
+  const matchCancelModalOpen = ref(false);
+  const pendingMatchCancel = ref(null);
 
   /* =========================================================
      SOCKET
@@ -141,6 +244,9 @@ export function useTournament() {
       case 'groups_day_1':
         return 'Fase a gironi';
 
+      case 'quarter_finals':
+        return 'Quarti di finale';
+
       default:
         return (
           tournament.value.state.phase ||
@@ -149,15 +255,27 @@ export function useTournament() {
     }
   });
 
-  const activeRoundLabel = computed(() => {
-    const round =
-      tournament.value.state
-        .activeGroupRound;
+  const allTournamentMatches = computed(() => [
+    ...(Array.isArray(
+      tournament.value.state.groupMatches
+    )
+      ? tournament.value.state.groupMatches
+      : []),
 
-    return Number.isInteger(round)
-      ? `Turno ${round}`
-      : 'Nessuno';
-  });
+    ...(Array.isArray(
+      tournament.value.state.knockoutMatches
+    )
+      ? tournament.value.state.knockoutMatches
+      : [])
+  ]);
+
+  const activeMatchesCount = computed(() =>
+    allTournamentMatches.value.filter(
+      (match) =>
+        !match.played &&
+        match.status === 'active'
+    ).length
+  );
 
   const completedMatchesCount = computed(() =>
     tournament.value.state.groupMatches.filter(
@@ -180,12 +298,7 @@ export function useTournament() {
      CLASSIFICHE
   ========================================================= */
 
-  const computedStandings = computed(() => {
-    const standings = {
-      G1: [],
-      G2: []
-    };
-
+  function provisionalGroupRanking(group) {
     const pointsConfig =
       tournament.value.config
         ?.pointsSystem || {
@@ -193,92 +306,226 @@ export function useTournament() {
         loss: 0
       };
 
-    const matches = Array.isArray(
+    const teams =
       tournament.value.state
-        ?.groupMatches
-    )
-      ? tournament.value.state.groupMatches
-      : [];
+        ?.groups?.[group] || [];
 
-    ['G1', 'G2'].forEach((group) => {
-      const teams =
+    const matches =
+      Array.isArray(
         tournament.value.state
-          ?.groups?.[group] || [];
+          ?.groupMatches
+      )
+        ? tournament.value.state
+            .groupMatches
+        : [];
 
-      const stats = {};
+    const stats = {};
 
-      teams.forEach((team) => {
-        stats[team] = {
-          name: team,
-          points: 0,
-          difference: 0,
-          played: 0,
-          wins: 0,
-          losses: 0
-        };
+    teams.forEach((team) => {
+      stats[team] = {
+        name: team,
+        points: 0,
+        difference: 0,
+        played: 0,
+        wins: 0,
+        losses: 0
+      };
+    });
+
+    matches
+      .filter(
+        (match) =>
+          match.group === group &&
+          match.played
+      )
+      .forEach((match) => {
+        const home = stats[match.home];
+        const away = stats[match.away];
+
+        if (!home || !away) {
+          return;
+        }
+
+        home.played += 1;
+        away.played += 1;
+
+        home.difference +=
+          match.scoreHome -
+          match.scoreAway;
+
+        away.difference +=
+          match.scoreAway -
+          match.scoreHome;
+
+        if (match.winner === match.home) {
+          home.wins += 1;
+          away.losses += 1;
+          home.points += pointsConfig.win;
+          away.points += pointsConfig.loss;
+        }
+
+        else if (match.winner === match.away) {
+          away.wins += 1;
+          home.losses += 1;
+          away.points += pointsConfig.win;
+          home.points += pointsConfig.loss;
+        }
+      });
+
+    function headToHeadPoints(tiedNames) {
+      const set = new Set(tiedNames);
+      const mini = {};
+
+      tiedNames.forEach((name) => {
+        mini[name] = 0;
       });
 
       matches
         .filter(
           (match) =>
             match.group === group &&
-            match.played
+            match.played &&
+            set.has(match.home) &&
+            set.has(match.away)
         )
         .forEach((match) => {
-          const home = stats[match.home];
-          const away = stats[match.away];
-
-          if (!home || !away) {
-            return;
-          }
-
-          home.played += 1;
-          away.played += 1;
-
-          home.difference +=
-            match.scoreHome -
-            match.scoreAway;
-
-          away.difference +=
-            match.scoreAway -
-            match.scoreHome;
-
           if (match.winner === match.home) {
-            home.wins += 1;
-            away.losses += 1;
-
-            home.points +=
-              pointsConfig.win;
-
-            away.points +=
-              pointsConfig.loss;
+            mini[match.home] += pointsConfig.win;
+            mini[match.away] += pointsConfig.loss;
           }
 
-          else if (
-            match.winner === match.away
-          ) {
-            away.wins += 1;
-            home.losses += 1;
-
-            away.points +=
-              pointsConfig.win;
-
-            home.points +=
-              pointsConfig.loss;
+          else if (match.winner === match.away) {
+            mini[match.away] += pointsConfig.win;
+            mini[match.home] += pointsConfig.loss;
           }
         });
 
-      standings[group] = Object.values(
-        stats
-      ).sort(
+      return mini;
+    }
+
+    const byPoints = new Map();
+
+    Object.values(stats).forEach((row) => {
+      if (!byPoints.has(row.points)) {
+        byPoints.set(row.points, []);
+      }
+
+      byPoints.get(row.points).push(row);
+    });
+
+    const orderedPointValues =
+      [...byPoints.keys()].sort(
+        (a, b) => b - a
+      );
+
+    const result = [];
+
+    orderedPointValues.forEach((points) => {
+      const bucket = byPoints.get(points);
+
+      if (bucket.length === 1) {
+        result.push(bucket[0]);
+        return;
+      }
+
+      const h2h = headToHeadPoints(
+        bucket.map((row) => row.name)
+      );
+
+      bucket.sort(
         (a, b) =>
-          b.points - a.points ||
+          (h2h[b.name] || 0) -
+            (h2h[a.name] || 0) ||
           b.difference - a.difference ||
           a.name.localeCompare(b.name)
       );
+
+      result.push(
+        ...bucket.map((row) => ({
+          ...row,
+          headToHeadPoints:
+            h2h[row.name] || 0
+        }))
+      );
     });
 
-    return standings;
+    return result.map((row, index) => ({
+      ...row,
+      position: index + 1,
+      qualified: index < 4,
+      provisional: true
+    }));
+  }
+
+  const standingsFinalized = computed(() => {
+    const g1 =
+      tournament.value.state
+        ?.groupStandings?.G1;
+
+    const g2 =
+      tournament.value.state
+        ?.groupStandings?.G2;
+
+    return (
+      Array.isArray(g1) &&
+      g1.length === 6 &&
+      Array.isArray(g2) &&
+      g2.length === 6
+    );
+  });
+
+  const computedStandings = computed(() => {
+    if (standingsFinalized.value) {
+      return {
+        G1:
+          tournament.value.state
+            .groupStandings.G1,
+
+        G2:
+          tournament.value.state
+            .groupStandings.G2
+      };
+    }
+
+    return {
+      G1:
+        provisionalGroupRanking('G1'),
+
+      G2:
+        provisionalGroupRanking('G2')
+    };
+  });
+
+  const quarterFinalMatches = computed(() =>
+    (tournament.value.state.knockoutMatches || [])
+      .filter(
+        (match) =>
+          match.stage === 'quarter_final'
+      )
+      .sort(
+        (a, b) =>
+          String(a.slot || a.id)
+            .localeCompare(
+              String(b.slot || b.id)
+            )
+      )
+  );
+
+  const isQualifiedForQuarterFinals = computed(() => {
+    if (!joinedTeamName.value) {
+      return false;
+    }
+
+    const currentTeam =
+      joinedTeamName.value.toLowerCase();
+
+    return quarterFinalMatches.value.some(
+      (match) =>
+        String(match.home || '')
+          .toLowerCase() === currentTeam ||
+        String(match.away || '')
+          .toLowerCase() === currentTeam
+    );
   });
 
   /* =========================================================
@@ -327,6 +574,34 @@ export function useTournament() {
     };
   });
 
+  const matchesByGroup = computed(() => {
+    const matches =
+      tournament.value.state.groupMatches ||
+      [];
+
+    return {
+      G1: matches
+        .filter(
+          (match) => match.group === 'G1'
+        )
+        .sort(
+          (a, b) =>
+            a.round - b.round ||
+            a.id.localeCompare(b.id)
+        ),
+
+      G2: matches
+        .filter(
+          (match) => match.group === 'G2'
+        )
+        .sort(
+          (a, b) =>
+            a.round - b.round ||
+            a.id.localeCompare(b.id)
+        )
+    };
+  });
+
   /* =========================================================
      CALENDARIO SQUADRA
   ========================================================= */
@@ -339,7 +614,7 @@ export function useTournament() {
     const currentTeam =
       joinedTeamName.value.toLowerCase();
 
-    return tournament.value.state.groupMatches
+    return allTournamentMatches.value
       .filter((match) => {
         const home = String(
           match.home || ''
@@ -354,32 +629,44 @@ export function useTournament() {
           away === currentTeam
         );
       })
-      .sort(
-        (a, b) =>
-          a.round - b.round
-      );
+      .sort((a, b) => {
+        const aStage =
+          a.stage === 'quarter_final'
+            ? 1
+            : 0;
+
+        const bStage =
+          b.stage === 'quarter_final'
+            ? 1
+            : 0;
+
+        return (
+          aStage - bStage ||
+          Number(a.round || 0) -
+            Number(b.round || 0) ||
+          String(a.id).localeCompare(
+            String(b.id)
+          )
+        );
+      });
   });
 
   const currentTeamMatch = computed(() => {
-    const activeRound =
-      tournament.value.state
-        .activeGroupRound;
-
-    if (!activeRound) {
-      return null;
-    }
-
     return (
       teamSchedule.value.find(
         (match) =>
-          match.round === activeRound
-      ) || null
+          !match.played &&
+          match.status === 'active'
+      ) ||
+      null
     );
   });
 
   const nextScheduledMatch = computed(() =>
     teamSchedule.value.find(
-      (match) => !match.played
+      (match) =>
+        !match.played &&
+        match.status === 'scheduled'
     ) || null
   );
 
@@ -388,9 +675,17 @@ export function useTournament() {
   ========================================================= */
 
   const groupTargetScore = computed(() => {
+    const match =
+      currentTeamMatch.value;
+
     const configured = Number(
-      tournament.value.config
-        ?.groupTargetScore
+      match?.stage === 'quarter_final'
+        ? tournament.value.config
+            ?.quarterFinalTargetScore ??
+          tournament.value.config
+            ?.groupTargetScore
+        : tournament.value.config
+            ?.groupTargetScore
     );
 
     return (
@@ -576,6 +871,35 @@ export function useTournament() {
   }
 
   /* =========================================================
+     MODALI / AVVISI
+  ========================================================= */
+
+  function showNotice(
+    title,
+    message
+  ) {
+    noticeModalTitle.value =
+      title;
+
+    noticeModalMessage.value =
+      message;
+
+    noticeModalOpen.value =
+      true;
+  }
+
+  function closeNoticeModal() {
+    noticeModalOpen.value =
+      false;
+
+    noticeModalTitle.value =
+      '';
+
+    noticeModalMessage.value =
+      '';
+  }
+
+  /* =========================================================
      API
   ========================================================= */
 
@@ -633,54 +957,237 @@ export function useTournament() {
 
   async function saveSettings() {
     try {
-      tournament.value = await apiRequest(
-        '/api/tournament/settings',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-          body: JSON.stringify({
-            expectedTeams:
-              expectedTeams.value
-          })
-        }
-      );
+      tournament.value =
+        await apiRequest(
+          '/api/tournament/settings',
+          {
+            method:
+              'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+                expectedTeams:
+                  expectedTeams.value
+              })
+          }
+        );
     }
 
     catch (error) {
-      alert(error.message);
+      showNotice(
+        'Impossibile salvare',
+        error.message
+      );
     }
   }
 
-  async function generateGroupMatches() {
-    try {
-      tournament.value = await apiRequest(
-        '/api/tournament/group-matches/generate',
-        {
-          method: 'POST'
-        }
+  function generateGroupMatches() {
+    if (
+      tournament.value.state
+        .groupMatches.length > 0
+    ) {
+      showNotice(
+        'Sorteggio già effettuato',
+        'Il calendario è già stato generato. Per effettuare un nuovo sorteggio devi prima resettare il torneo.'
       );
+
+      return;
+    }
+
+    drawModalOpen.value =
+      true;
+  }
+
+  function closeDrawModal() {
+    drawModalOpen.value =
+      false;
+  }
+
+  async function confirmGenerateGroupMatches() {
+    try {
+      tournament.value =
+        await apiRequest(
+          '/api/tournament/group-matches/generate',
+          {
+            method:
+              'POST'
+          }
+        );
+
+      drawModalOpen.value =
+        false;
     }
 
     catch (error) {
-      alert(error.message);
+      drawModalOpen.value =
+        false;
+
+      showNotice(
+        'Sorteggio non avviato',
+        error.message
+      );
     }
   }
 
-  async function startRound(round) {
-    try {
-      tournament.value = await apiRequest(
-        `/api/tournament/group-rounds/${round}/start`,
-        {
-          method: 'POST'
-        }
+  function findActiveConflictForMatch(
+    match
+  ) {
+    if (!match) {
+      return null;
+    }
+
+    const teams = [
+      String(match.home || '')
+        .toLowerCase(),
+      String(match.away || '')
+        .toLowerCase()
+    ];
+
+    const conflict =
+      allTournamentMatches.value.find(
+        (candidate) =>
+          candidate.id !== match.id &&
+          !candidate.played &&
+          candidate.status === 'active' &&
+          (
+            teams.includes(
+              String(candidate.home || '')
+                .toLowerCase()
+            ) ||
+            teams.includes(
+              String(candidate.away || '')
+                .toLowerCase()
+            )
+          )
       );
+
+    if (!conflict) {
+      return null;
+    }
+
+    const conflictTeams = [
+      conflict.home,
+      conflict.away
+    ];
+
+    const busyTeam = [
+      match.home,
+      match.away
+    ].find(
+      (team) =>
+        conflictTeams.some(
+          (candidate) =>
+            String(candidate || '')
+              .toLowerCase() ===
+            String(team || '')
+              .toLowerCase()
+        )
+    );
+
+    return {
+      match: conflict,
+      team: busyTeam || 'Una squadra'
+    };
+  }
+
+  function startMatch(
+    match
+  ) {
+    if (!match) {
+      return;
+    }
+
+    if (
+      match.played ||
+      match.status === 'completed'
+    ) {
+      showNotice(
+        'Partita già completata',
+        'Questa partita è già terminata.'
+      );
+
+      return;
+    }
+
+    if (match.status === 'active') {
+      showNotice(
+        'Partita già in corso',
+        `${match.home} contro ${match.away} è già in corso.`
+      );
+
+      return;
+    }
+
+    const conflict =
+      findActiveConflictForMatch(
+        match
+      );
+
+    if (conflict) {
+      const opponent =
+        conflict.match.home ===
+        conflict.team
+          ? conflict.match.away
+          : conflict.match.home;
+
+      showNotice(
+        'Squadra già impegnata',
+        `${conflict.team} sta già giocando contro ${opponent}. Termina prima quella partita.`
+      );
+
+      return;
+    }
+
+    pendingMatchStart.value =
+      match;
+
+    matchStartModalOpen.value =
+      true;
+  }
+
+  function closeMatchStartModal() {
+    matchStartModalOpen.value =
+      false;
+
+    pendingMatchStart.value =
+      null;
+  }
+
+  async function confirmStartMatch() {
+    const match =
+      pendingMatchStart.value;
+
+    if (!match?.id) {
+      closeMatchStartModal();
+      return;
+    }
+
+    try {
+      tournament.value =
+        await apiRequest(
+          `/api/tournament/matches/${encodeURIComponent(
+            match.id
+          )}/start`,
+          {
+            method: 'POST'
+          }
+        );
+
+      closeMatchStartModal();
     }
 
     catch (error) {
-      alert(error.message);
+      closeMatchStartModal();
+
+      showNotice(
+        'Impossibile avviare la partita',
+        error.message
+      );
     }
   }
 
@@ -713,7 +1220,10 @@ export function useTournament() {
     }
 
     catch (error) {
-      alert(error.message);
+      showNotice(
+        'Reset non riuscito',
+        error.message
+      );
     }
   }
 
@@ -783,7 +1293,8 @@ export function useTournament() {
       String(draft.home).trim() === '' ||
       String(draft.away).trim() === ''
     ) {
-      alert(
+      showNotice(
+        'Punteggi mancanti',
         'Inserisci entrambi i punteggi.'
       );
       return;
@@ -796,7 +1307,8 @@ export function useTournament() {
       !Number.isInteger(home) ||
       !Number.isInteger(away)
     ) {
-      alert(
+      showNotice(
+        'Punteggi non validi',
         'I punteggi devono essere numeri interi.'
       );
       return;
@@ -804,7 +1316,7 @@ export function useTournament() {
 
     try {
       tournament.value = await apiRequest(
-        `/api/tournament/group-matches/${encodeURIComponent(
+        `/api/tournament/matches/${encodeURIComponent(
           match.id
         )}/score`,
         {
@@ -824,7 +1336,10 @@ export function useTournament() {
     }
 
     catch (error) {
-      alert(error.message);
+      showNotice(
+        'Impossibile salvare il risultato',
+        error.message
+      );
     }
   }
 
@@ -877,7 +1392,40 @@ export function useTournament() {
     socket.on(
       'team:join:error',
       (message) => {
-        statusMessage.value = message;
+        statusMessage.value =
+          message;
+
+        const lower =
+          String(
+            message ||
+            ''
+          ).toLowerCase();
+
+        let title =
+          'Accesso non riuscito';
+
+        if (
+          lower.includes(
+            'codice'
+          )
+        ) {
+          title =
+            'Codice non valido';
+        }
+
+        else if (
+          lower.includes(
+            'già conness'
+          )
+        ) {
+          title =
+            'Squadra già connessa';
+        }
+
+        showNotice(
+          title,
+          message
+        );
       }
     );
 
@@ -901,7 +1449,13 @@ export function useTournament() {
     socket.on(
       'match:score:error',
       (message) => {
-        statusMessage.value = message;
+        statusMessage.value =
+          message;
+
+        showNotice(
+          'Punteggio non inviato',
+          message
+        );
       }
     );
 
@@ -1012,32 +1566,54 @@ export function useTournament() {
   }
 
   function disconnectTeam() {
-    const confirmed = window.confirm(
-      'Vuoi uscire dalla squadra?'
-    );
+    disconnectModalOpen.value =
+      true;
+  }
 
-    if (!confirmed) {
-      return;
-    }
+  function closeDisconnectModal() {
+    disconnectModalOpen.value =
+      false;
+  }
 
-    manualDisconnect = true;
+  function confirmDisconnectTeam() {
+    disconnectModalOpen.value =
+      false;
+
+    manualDisconnect =
+      true;
 
     localStorage.removeItem(
       STORAGE_KEY
     );
 
-    joinedTeamName.value = '';
-    teamName.value = '';
-    teamCode.value = '';
-    scoreInput.value = null;
-    isPhoneConnected.value = false;
-    statusMessage.value = 'Disconnesso.';
+    joinedTeamName.value =
+      '';
 
-    if (socket?.connected) {
-      socket.emit('team:leave');
+    teamName.value =
+      '';
+
+    teamCode.value =
+      '';
+
+    scoreInput.value =
+      null;
+
+    isPhoneConnected.value =
+      false;
+
+    statusMessage.value =
+      'Disconnesso.';
+
+    if (
+      socket?.connected
+    ) {
+      socket.emit(
+        'team:leave'
+      );
     }
 
-    manualDisconnect = false;
+    manualDisconnect =
+      false;
   }
 
   /* =========================================================
@@ -1084,7 +1660,14 @@ export function useTournament() {
       'burraco-hands',
       tournamentId,
       joinedTeamName.value.toLowerCase(),
-      match.id
+      match.id,
+      `reset-${
+        Number.isInteger(
+          match.resetVersion
+        )
+          ? match.resetVersion
+          : 0
+      }`
     ].join(':');
   }
 
@@ -1682,6 +2265,46 @@ export function useTournament() {
       : match.home;
   }
 
+  function teamImage(name) {
+    if (!name) {
+      return null;
+    }
+
+    const images =
+      tournament.value.config
+        ?.manualTeamImages || {};
+
+    const direct =
+      images[name];
+
+    if (direct) {
+      return String(direct);
+    }
+
+    const found = Object.entries(images).find(
+      ([teamName]) =>
+        String(teamName).toLowerCase() ===
+        String(name).toLowerCase()
+    );
+
+    return found
+      ? String(found[1])
+      : null;
+  }
+
+  function teamInitial(name) {
+    const normalized =
+      String(name || '').trim();
+
+    if (!normalized) {
+      return '?';
+    }
+
+    return normalized
+      .charAt(0)
+      .toUpperCase();
+  }
+
   function formatScore(value) {
     if (
       value === null ||
@@ -1703,15 +2326,40 @@ export function useTournament() {
     return formatScore(value);
   }
 
-  function matchStatusLabel(match) {
-    if (match.played) {
+  function isMatchActive(
+    match
+  ) {
+    return Boolean(
+      match &&
+      !match.played &&
+      match.status === 'active'
+    );
+  }
+
+  function matchStageLabel(match) {
+    if (
+      match?.stage ===
+      'quarter_final'
+    ) {
+      return 'Quarto di finale';
+    }
+
+    return 'Gironi';
+  }
+
+  function matchStatusLabel(
+    match
+  ) {
+    if (
+      match.played
+    ) {
       return 'Completata';
     }
 
     if (
-      match.round ===
-      tournament.value.state
-        .activeGroupRound
+      isMatchActive(
+        match
+      )
     ) {
       return 'In corso';
     }
@@ -1719,15 +2367,19 @@ export function useTournament() {
     return 'Da giocare';
   }
 
-  function matchStatusClass(match) {
-    if (match.played) {
+  function matchStatusClass(
+    match
+  ) {
+    if (
+      match.played
+    ) {
       return 'completed';
     }
 
     if (
-      match.round ===
-      tournament.value.state
-        .activeGroupRound
+      isMatchActive(
+        match
+      )
     ) {
       return 'active';
     }
@@ -1768,6 +2420,7 @@ export function useTournament() {
   watch(
     [
       () => currentTeamMatch.value?.id,
+      () => currentTeamMatch.value?.resetVersion,
       () => joinedTeamName.value,
       () =>
         tournament.value.state
@@ -1859,15 +2512,44 @@ export function useTournament() {
     editingMatchId,
     managerScoreDrafts,
 
+    /* modali / notifiche */
+    noticeModalOpen,
+    noticeModalTitle,
+    noticeModalMessage,
+    closeNoticeModal,
+
+    disconnectModalOpen,
+    closeDisconnectModal,
+    confirmDisconnectTeam,
+
+    drawModalOpen,
+    closeDrawModal,
+    confirmGenerateGroupMatches,
+
+    matchStartModalOpen,
+    pendingMatchStart,
+    closeMatchStartModal,
+    confirmStartMatch,
+
+    matchCancelModalOpen,
+    pendingMatchCancel,
+    closeMatchCancelModal,
+    confirmCancelMatch,
+
     /* computed generali */
     needsTeamCode,
     phoneHasError,
     phaseLabel,
-    activeRoundLabel,
+    activeMatchesCount,
     completedMatchesCount,
     roundNumbers,
+    allTournamentMatches,
     computedStandings,
+    standingsFinalized,
+    quarterFinalMatches,
+    isQualifiedForQuarterFinals,
     groupedMatchesByGroup,
+    matchesByGroup,
     teamSchedule,
     currentTeamMatch,
     nextScheduledMatch,
@@ -1875,7 +2557,8 @@ export function useTournament() {
     /* API manager */
     saveSettings,
     generateGroupMatches,
-    startRound,
+    startMatch,
+    cancelMatch,
 
     /* reset */
     resetModalOpen,
@@ -1883,7 +2566,7 @@ export function useTournament() {
     closeResetModal,
     confirmResetTournament,
 
-    /* turni */
+    /* calendario */
     isRoundComplete,
     isRoundCompleteForGroup,
 
@@ -1943,8 +2626,12 @@ export function useTournament() {
     myScore,
     opponentScore,
     opponentFor,
+    teamImage,
+    teamInitial,
     formatScore,
     signedNumber,
+    isMatchActive,
+    matchStageLabel,
     matchStatusLabel,
     matchStatusClass,
     phoneResultText,

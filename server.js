@@ -185,6 +185,14 @@ function buildRoundRobinMatches(groupName, teamNames) {
           scoreHomeSubmittedAt: null,
           scoreAwaySubmittedAt: null,
           managerEditedAt: null,
+          startedAt: null,
+
+          /*
+           * Incrementato quando il manager annulla
+           * una partita. Serve ai telefoni per non
+           * riutilizzare le vecchie mani locali.
+           */
+          resetVersion: 0,
 
           /*
            * Stato condiviso di fine partita.
@@ -244,23 +252,438 @@ function finalizeMatchIfReady(match) {
         : match.away;
 }
 
+
 /* =========================================================
-   TURNI
+   CLASSIFICA UFFICIALE / QUALIFICAZIONE
 ========================================================= */
 
-function roundMatches(round) {
-  return tournament.state.groupMatches.filter(
-    (match) => match.round === round
+function getAllMatches() {
+  return [
+    ...(Array.isArray(tournament.state.groupMatches)
+      ? tournament.state.groupMatches
+      : []),
+
+    ...(Array.isArray(tournament.state.knockoutMatches)
+      ? tournament.state.knockoutMatches
+      : [])
+  ];
+}
+
+function findMatchById(matchId) {
+  return (
+    getAllMatches().find(
+      (match) => match.id === matchId
+    ) ||
+    null
   );
 }
 
-function isRoundCompleted(round) {
-  const matches = roundMatches(round);
+function areAllGroupMatchesCompleted() {
+  const matches =
+    tournament.state.groupMatches || [];
 
   return (
     matches.length > 0 &&
-    matches.every((match) => match.played)
+    matches.every(
+      (match) =>
+        match.played &&
+        match.status === 'completed'
+    )
   );
+}
+
+function buildBaseGroupStats(group) {
+  const teams =
+    tournament.state.groups?.[group] ||
+    [];
+
+  const pointsConfig =
+    tournament.config.pointsSystem || {
+      win: 1,
+      loss: 0
+    };
+
+  const stats = {};
+
+  teams.forEach((team) => {
+    stats[team] = {
+      name: team,
+      points: 0,
+      difference: 0,
+      played: 0,
+      wins: 0,
+      losses: 0
+    };
+  });
+
+  tournament.state.groupMatches
+    .filter(
+      (match) =>
+        match.group === group &&
+        match.played
+    )
+    .forEach((match) => {
+      const home = stats[match.home];
+      const away = stats[match.away];
+
+      if (!home || !away) {
+        return;
+      }
+
+      home.played += 1;
+      away.played += 1;
+
+      home.difference +=
+        match.scoreHome -
+        match.scoreAway;
+
+      away.difference +=
+        match.scoreAway -
+        match.scoreHome;
+
+      if (match.winner === match.home) {
+        home.wins += 1;
+        away.losses += 1;
+
+        home.points += pointsConfig.win;
+        away.points += pointsConfig.loss;
+      }
+
+      else if (match.winner === match.away) {
+        away.wins += 1;
+        home.losses += 1;
+
+        away.points += pointsConfig.win;
+        home.points += pointsConfig.loss;
+      }
+    });
+
+  return stats;
+}
+
+function buildHeadToHeadPoints(group, tiedTeams) {
+  const teamSet = new Set(tiedTeams);
+
+  const pointsConfig =
+    tournament.config.pointsSystem || {
+      win: 1,
+      loss: 0
+    };
+
+  const miniPoints = {};
+
+  tiedTeams.forEach((team) => {
+    miniPoints[team] = 0;
+  });
+
+  tournament.state.groupMatches
+    .filter(
+      (match) =>
+        match.group === group &&
+        match.played &&
+        teamSet.has(match.home) &&
+        teamSet.has(match.away)
+    )
+    .forEach((match) => {
+      if (match.winner === match.home) {
+        miniPoints[match.home] += pointsConfig.win;
+        miniPoints[match.away] += pointsConfig.loss;
+      }
+
+      else if (match.winner === match.away) {
+        miniPoints[match.away] += pointsConfig.win;
+        miniPoints[match.home] += pointsConfig.loss;
+      }
+    });
+
+  return miniPoints;
+}
+
+function splitByValue(rows, getter, descending = true) {
+  const ordered = [...rows].sort((a, b) => {
+    const av = getter(a);
+    const bv = getter(b);
+
+    return descending
+      ? bv - av
+      : av - bv;
+  });
+
+  const groups = [];
+
+  ordered.forEach((row) => {
+    const value = getter(row);
+    const last = groups[groups.length - 1];
+
+    if (!last || last.value !== value) {
+      groups.push({
+        value,
+        rows: [row]
+      });
+    }
+
+    else {
+      last.rows.push(row);
+    }
+  });
+
+  return groups;
+}
+
+function rankGroupOfficial(group) {
+  const stats = buildBaseGroupStats(group);
+
+  /*
+   * Criteri:
+   * 1. punti
+   * 2. scontro diretto / mini-classifica
+   * 3. differenza punti generale
+   * 4. sorteggio
+   */
+  const byPoints = splitByValue(
+    Object.values(stats),
+    (row) => row.points
+  );
+
+  const finalRows = [];
+
+  byPoints.forEach((pointsBucket) => {
+    if (pointsBucket.rows.length === 1) {
+      finalRows.push(pointsBucket.rows[0]);
+      return;
+    }
+
+    const names = pointsBucket.rows.map(
+      (row) => row.name
+    );
+
+    const headToHead = buildHeadToHeadPoints(
+      group,
+      names
+    );
+
+    const rowsWithH2H = pointsBucket.rows.map(
+      (row) => ({
+        ...row,
+        headToHeadPoints:
+          headToHead[row.name] || 0
+      })
+    );
+
+    const byH2H = splitByValue(
+      rowsWithH2H,
+      (row) => row.headToHeadPoints
+    );
+
+    byH2H.forEach((h2hBucket) => {
+      if (h2hBucket.rows.length === 1) {
+        finalRows.push(h2hBucket.rows[0]);
+        return;
+      }
+
+      const byDifference = splitByValue(
+        h2hBucket.rows,
+        (row) => row.difference
+      );
+
+      byDifference.forEach((differenceBucket) => {
+        if (differenceBucket.rows.length === 1) {
+          finalRows.push(differenceBucket.rows[0]);
+          return;
+        }
+
+        /*
+         * Il sorteggio viene effettuato una volta,
+         * poi il risultato viene salvato nel JSON
+         * dentro groupStandings.
+         */
+        const drawn = differenceBucket.rows
+          .map((row) => ({
+            ...row,
+            drawLot: Math.random(),
+            decidedBy: 'draw_lots'
+          }))
+          .sort(
+            (a, b) => b.drawLot - a.drawLot
+          );
+
+        finalRows.push(...drawn);
+      });
+    });
+  });
+
+  return finalRows.map((row, index) => ({
+    ...row,
+    position: index + 1,
+    qualified:
+      index <
+      Number(
+        tournament.config.qualifiedPerGroup || 4
+      )
+  }));
+}
+
+function createKnockoutMatch({
+  id,
+  slot,
+  home,
+  away,
+  sourceHome,
+  sourceAway
+}) {
+  return {
+    id,
+    slot,
+    stage: 'quarter_final',
+
+    home,
+    away,
+
+    sourceHome,
+    sourceAway,
+
+    status: 'scheduled',
+    played: false,
+    winner: null,
+
+    scoreHome: null,
+    scoreAway: null,
+    scoreHomeSubmittedAt: null,
+    scoreAwaySubmittedAt: null,
+    managerEditedAt: null,
+    startedAt: null,
+
+    resetVersion: 0,
+
+    finishTriggered: false,
+    finishHandCount: null,
+    finishTriggeredBy: null,
+    finishTriggeredAt: null
+  };
+}
+
+function buildQuarterFinals(standings) {
+  const g1 = standings.G1;
+  const g2 = standings.G2;
+
+  return [
+    createKnockoutMatch({
+      id: 'QF1',
+      slot: 'QF1',
+      home: g1[0].name,
+      away: g2[3].name,
+      sourceHome: 'G1_1',
+      sourceAway: 'G2_4'
+    }),
+
+    createKnockoutMatch({
+      id: 'QF2',
+      slot: 'QF2',
+      home: g1[1].name,
+      away: g2[2].name,
+      sourceHome: 'G1_2',
+      sourceAway: 'G2_3'
+    }),
+
+    createKnockoutMatch({
+      id: 'QF3',
+      slot: 'QF3',
+      home: g2[0].name,
+      away: g1[3].name,
+      sourceHome: 'G2_1',
+      sourceAway: 'G1_4'
+    }),
+
+    createKnockoutMatch({
+      id: 'QF4',
+      slot: 'QF4',
+      home: g2[1].name,
+      away: g1[2].name,
+      sourceHome: 'G2_2',
+      sourceAway: 'G1_3'
+    })
+  ];
+}
+
+function knockoutHasStarted() {
+  return (
+    tournament.state.knockoutMatches || []
+  ).some(
+    (match) =>
+      match.status === 'active' ||
+      match.played ||
+      Boolean(match.startedAt) ||
+      match.scoreHome !== null ||
+      match.scoreAway !== null
+  );
+}
+
+function finalizeGroupsAndCreateQuarterFinals({
+  forceRebuild = false
+} = {}) {
+  if (!areAllGroupMatchesCompleted()) {
+    return false;
+  }
+
+  if (
+    tournament.state.knockoutMatches.length > 0 &&
+    !forceRebuild
+  ) {
+    return false;
+  }
+
+  if (forceRebuild && knockoutHasStarted()) {
+    throw new Error(
+      'I quarti sono già iniziati: la classifica dei gironi non può più modificare il tabellone.'
+    );
+  }
+
+  const standings = {
+    G1: rankGroupOfficial('G1'),
+    G2: rankGroupOfficial('G2')
+  };
+
+  tournament.state.groupStandings = standings;
+  tournament.state.knockoutMatches =
+    buildQuarterFinals(standings);
+
+  tournament.state.phase = 'quarter_finals';
+
+  return true;
+}
+
+function targetScoreForMatch(match) {
+  if (match?.stage === 'quarter_final') {
+    return (
+      Number(
+        tournament.config.quarterFinalTargetScore
+      ) ||
+      Number(
+        tournament.config.groupTargetScore
+      ) ||
+      1005
+    );
+  }
+
+  return (
+    Number(
+      tournament.config.groupTargetScore
+    ) ||
+    1005
+  );
+}
+
+/*
+ * Compatibilità con tornei già conclusi con
+ * una versione precedente: al riavvio creiamo
+ * automaticamente i quarti se necessario.
+ */
+if (
+  areAllGroupMatchesCompleted() &&
+  tournament.state.knockoutMatches.length === 0
+) {
+  finalizeGroupsAndCreateQuarterFinals();
+  saveTournamentData(tournament);
 }
 
 /* =========================================================
@@ -365,8 +788,10 @@ app.post('/api/tournament/group-matches/generate', (_req, res) => {
       G2: []
     };
 
-    tournament.state.activeGroupRound = null;
-    tournament.state.phase = 'groups_day_1';
+    tournament.state.knockoutMatches = [];
+
+    tournament.state.phase =
+      'groups_day_1';
 
     persistAndBroadcast();
 
@@ -383,80 +808,243 @@ app.post('/api/tournament/group-matches/generate', (_req, res) => {
 });
 
 /* =========================================================
-   AVVIO TURNO
+   AVVIO SINGOLA PARTITA
 ========================================================= */
 
-app.post('/api/tournament/group-rounds/:round/start', (req, res) => {
-  const round = Number(req.params.round);
-  const matches = roundMatches(round);
+function findActiveMatchForTeam(
+  teamName,
+  excludeMatchId = null
+) {
+  const normalizedTeam =
+    String(teamName || '')
+      .toLowerCase();
 
-  if (
-    !Number.isInteger(round) ||
-    round < 1 ||
-    matches.length === 0
-  ) {
-    return res.status(400).json({
-      error: 'Turno non valido.'
-    });
-  }
+  return (
+    getAllMatches().find(
+      (match) =>
+        match.id !== excludeMatchId &&
+        !match.played &&
+        match.status === 'active' &&
+        (
+          String(match.home || '')
+            .toLowerCase() === normalizedTeam ||
+          String(match.away || '')
+            .toLowerCase() === normalizedTeam
+        )
+    ) ||
+    null
+  );
+}
 
-  const activeRound =
-    tournament.state.activeGroupRound;
+app.post(
+  [
+    '/api/tournament/matches/:matchId/start',
+    '/api/tournament/group-matches/:matchId/start'
+  ],
+  (req, res) => {
+    const match =
+      findMatchById(
+        req.params.matchId
+      );
 
-  if (
-    activeRound &&
-    activeRound !== round &&
-    !isRoundCompleted(activeRound)
-  ) {
-    return res.status(400).json({
-      error:
-        `Prima di avviare il Turno ${round}, completa tutte le partite del Turno ${activeRound}.`
-    });
-  }
-
-  if (
-    round > 1 &&
-    !isRoundCompleted(round - 1)
-  ) {
-    return res.status(400).json({
-      error:
-        `Il Turno ${round - 1} non è ancora completo.`
-    });
-  }
-
-  tournament.state.activeGroupRound = round;
-
-  tournament.state.groupMatches.forEach((match) => {
-    if (match.played) {
-      match.status = 'completed';
+    if (!match) {
+      return res.status(404).json({
+        error:
+          'Partita non trovata.'
+      });
     }
 
-    else if (match.round === round) {
-      match.status = 'active';
+    if (
+      match.played ||
+      match.status === 'completed'
+    ) {
+      return res.status(400).json({
+        error:
+          'Questa partita è già stata completata.'
+      });
     }
 
-    else {
-      match.status = 'scheduled';
+    if (match.status === 'active') {
+      return res.status(400).json({
+        error:
+          'Questa partita è già in corso.'
+      });
     }
-  });
 
-  persistAndBroadcast();
+    const homeConflict =
+      findActiveMatchForTeam(
+        match.home,
+        match.id
+      );
 
-  return res.json(tournament);
-});
+    if (homeConflict) {
+      return res.status(409).json({
+        error:
+          `${match.home} sta già giocando contro ${
+            homeConflict.home === match.home
+              ? homeConflict.away
+              : homeConflict.home
+          }.`
+      });
+    }
+
+    const awayConflict =
+      findActiveMatchForTeam(
+        match.away,
+        match.id
+      );
+
+    if (awayConflict) {
+      return res.status(409).json({
+        error:
+          `${match.away} sta già giocando contro ${
+            awayConflict.home === match.away
+              ? awayConflict.away
+              : awayConflict.home
+          }.`
+      });
+    }
+
+    match.status =
+      'active';
+
+    match.startedAt =
+      new Date().toISOString();
+
+    persistAndBroadcast();
+
+    return res.json(
+      tournament
+    );
+  }
+);
+
+/* =========================================================
+   ANNULLA / RESETTA SINGOLA PARTITA
+========================================================= */
+
+app.post(
+  [
+    '/api/tournament/matches/:matchId/cancel',
+    '/api/tournament/group-matches/:matchId/cancel'
+  ],
+  (req, res) => {
+    const match =
+      findMatchById(
+        req.params.matchId
+      );
+
+    if (!match) {
+      return res.status(404).json({
+        error:
+          'Partita non trovata.'
+      });
+    }
+
+    if (
+      match.played ||
+      match.status === 'completed'
+    ) {
+      return res.status(400).json({
+        error:
+          'Una partita già completata non può essere annullata. Usa la correzione risultato se necessario.'
+      });
+    }
+
+    if (match.status !== 'active') {
+      return res.status(400).json({
+        error:
+          'Puoi annullare solo una partita attualmente in corso.'
+      });
+    }
+
+    /*
+     * Reset completo della singola partita.
+     * Eventuali punteggi già inviati vengono rimossi.
+     */
+    match.status =
+      'scheduled';
+
+    match.played =
+      false;
+
+    match.winner =
+      null;
+
+    match.scoreHome =
+      null;
+
+    match.scoreAway =
+      null;
+
+    match.scoreHomeSubmittedAt =
+      null;
+
+    match.scoreAwaySubmittedAt =
+      null;
+
+    match.managerEditedAt =
+      null;
+
+    match.startedAt =
+      null;
+
+    match.finishTriggered =
+      false;
+
+    match.finishHandCount =
+      null;
+
+    match.finishTriggeredBy =
+      null;
+
+    match.finishTriggeredAt =
+      null;
+
+    match.resetVersion =
+      Number.isInteger(
+        match.resetVersion
+      )
+        ? match.resetVersion + 1
+        : 1;
+
+    persistAndBroadcast();
+
+    return res.json(
+      tournament
+    );
+  }
+);
 
 /* =========================================================
    MODIFICA RISULTATO MANAGER
 ========================================================= */
 
-app.post('/api/tournament/group-matches/:matchId/score', (req, res) => {
-  const match = tournament.state.groupMatches.find(
-    (item) => item.id === req.params.matchId
-  );
+app.post(
+  [
+    '/api/tournament/matches/:matchId/score',
+    '/api/tournament/group-matches/:matchId/score'
+  ],
+  (req, res) => {
+  const match =
+    findMatchById(
+      req.params.matchId
+    );
 
   if (!match) {
     return res.status(404).json({
       error: 'Partita non trovata.'
+    });
+  }
+
+  if (
+    match.stage !== 'quarter_final' &&
+    tournament.state.phase === 'quarter_finals' &&
+    knockoutHasStarted()
+  ) {
+    return res.status(409).json({
+      error:
+        'I quarti sono già iniziati. I risultati dei gironi non possono più essere modificati.'
     });
   }
 
@@ -499,6 +1087,14 @@ app.post('/api/tournament/group-matches/:matchId/score', (req, res) => {
   }
 
   finalizeMatchIfReady(match);
+
+  if (match.stage !== 'quarter_final') {
+    finalizeGroupsAndCreateQuarterFinals({
+      forceRebuild:
+        tournament.state.knockoutMatches.length > 0
+    });
+  }
+
   persistAndBroadcast();
 
   return res.json(tournament);
@@ -532,7 +1128,6 @@ app.post('/api/tournament/reset', (_req, res) => {
     G2: []
   };
 
-  tournament.state.activeGroupRound = null;
   tournament.state.knockoutMatches = [];
 
   /*
@@ -593,7 +1188,8 @@ io.on('connection', (socket) => {
 
     if (
       tournament.state.phase !== 'waiting-room' &&
-      tournament.state.phase !== 'groups_day_1'
+      tournament.state.phase !== 'groups_day_1' &&
+      tournament.state.phase !== 'quarter_finals'
     ) {
       socket.emit(
         'team:join:error',
@@ -735,18 +1331,18 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const match = tournament.state.groupMatches.find(
-      (item) => item.id === payload?.matchId
-    );
+    const match =
+      findMatchById(
+        payload?.matchId
+      );
 
     if (!match) {
       return;
     }
 
     if (
-      match.round !==
-        tournament.state.activeGroupRound ||
-      match.status !== 'active'
+      match.status !== 'active' ||
+      match.played
     ) {
       return;
     }
@@ -766,8 +1362,7 @@ io.on('connection', (socket) => {
     const handCount = Number(payload?.handCount);
     const reportedScore = parseScore(payload?.score);
     const target =
-      Number(tournament.config.groupTargetScore) ||
-      1005;
+      targetScoreForMatch(match);
 
     if (
       !Number.isInteger(handCount) ||
@@ -818,9 +1413,10 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const match = tournament.state.groupMatches.find(
-      (item) => item.id === payload?.matchId
-    );
+    const match =
+      findMatchById(
+        payload?.matchId
+      );
 
     if (!match) {
       return;
@@ -870,9 +1466,10 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const match = tournament.state.groupMatches.find(
-      (item) => item.id === payload?.matchId
-    );
+    const match =
+      findMatchById(
+        payload?.matchId
+      );
 
     if (!match) {
       socket.emit(
@@ -883,9 +1480,8 @@ io.on('connection', (socket) => {
     }
 
     if (
-      match.round !==
-        tournament.state.activeGroupRound ||
-      match.status !== 'active'
+      match.status !== 'active' ||
+      match.played
     ) {
       socket.emit(
         'match:score:error',
@@ -932,8 +1528,7 @@ io.on('connection', (socket) => {
     }
 
     const target =
-      Number(tournament.config.groupTargetScore) ||
-      1005;
+      targetScoreForMatch(match);
 
     /*
      * Se la partita non è ancora stata dichiarata conclusa,
@@ -1009,6 +1604,11 @@ io.on('connection', (socket) => {
     }
 
     finalizeMatchIfReady(match);
+
+    if (match.stage !== 'quarter_final') {
+      finalizeGroupsAndCreateQuarterFinals();
+    }
+
     persistAndBroadcast();
 
     socket.emit(
