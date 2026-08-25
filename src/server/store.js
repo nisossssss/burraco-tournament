@@ -47,7 +47,13 @@ const defaultTournament = {
 
     manualAccessCodes: {},
     manualTeamImages: {
-      "Diesel": "/teams/diesel.jpg"
+      "Diesel": "/teams/diesel.jpg",
+      "Team Barazzo": "/teams/teambarazzo.jpg",
+      "Bene ma non benissimo": "/teams/benemabenonbenissimo.jpg",
+      "Drama Queens": "/teams/dramaqueens.jpg",
+      "Le Cosu": "/teams/lecosu.jpg",
+      "Lunatiche": "/teams/lunatiche.jpg",
+      "Pomodoro e Cipolla": "/teams/pomodoroecipolla.jpg"
     },
 
     pointsSystem: {

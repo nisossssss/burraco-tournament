@@ -17,10 +17,10 @@
         "Bene ma non benissimo",
         "Drama Queens",
         "Le Cosu",
-        "Squadra 6"
+        "Lunatiche"
       ],
       "G2": [
-        "Squadra 7",
+        "Pomodoro e Cipolla",
         "Squadra 8",
         "Squadra 9",
         "Squadra 10",
@@ -34,8 +34,8 @@
       "Bene ma non benissimo": "A3",
       "Drama Queens": "A4",
       "Le Cosu": "A5",
-      "Squadra 6": "A6",
-      "Squadra 7": "A7",
+      "Lunatiche": "A6",
+      "Pomodoro e Cipolla": "A7",
       "Squadra 8": "A8",
       "Squadra 9": "A9",
       "Squadra 10": "A10",
@@ -43,7 +43,13 @@
       "Squadra 12": "A12"
     },
     "manualTeamImages": {
-      "Diesel": "/teams/diesel.jpg"
+      "Diesel": "/teams/diesel.jpg",
+      "Team Barazzo": "/teams/teambarazzo.jpg",
+      "Bene ma non benissimo": "/teams/benemanonbenissimo.jpg",
+      "Drama Queens": "/teams/dramaqueens.jpg",
+      "Le Cosu": "/teams/lecosu.jpg",
+      "Lunatiche": "/teams/lunatiche.jpg",
+      "Pomodoro e Cipolla": "/teams/pomodoroecipolla.jpg"
     },
     "pointsSystem": {
       "win": 1,
@@ -83,7 +89,8 @@
     "expectedTeams": 12,
     "connectedTeams": [],
     "registeredTeams": [
-      "Squadra 12"
+      "Pomodoro e Cipolla",
+      "Team Barazzo"
     ],
     "groups": {
       "G1": [],
@@ -96,8 +103,8 @@
     },
     "knockoutMatches": [],
     "audit": {
-      "createdAt": "2026-08-25T11:08:16.652Z",
-      "updatedAt": "2026-08-25T11:08:20.230Z"
+      "createdAt": "2026-08-25T11:31:12.810Z",
+      "updatedAt": "2026-08-25T11:32:09.628Z"
     }
   }
 }
